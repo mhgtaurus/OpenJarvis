@@ -1,0 +1,22 @@
+[project]
+name = "jarvis-assistant"
+version = "0.1.0"
+description = "Jarvis: ein persönlicher KI-Assistent mit Werkzeugen und Gedächtnis"
+requires-python = ">=3.10"
+dependencies = ["anthropic>=0.40"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+jarvis-assistant = "jarvis.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["jarvis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
