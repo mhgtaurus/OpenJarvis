@@ -52,5 +52,5 @@ jarvis assistant --wake-word computer --no-speak
   speech-to-text backend, not by a dedicated wake-word model. With a cloud STT
   backend, everything said near the microphone is sent to that provider; use a
   local backend such as faster-whisper to keep audio on your machine.
-- Each request is handled independently; the assistant does not keep a
-  conversation history between requests.
+- The assistant remembers only the last six exchanges of the current run, so
+  follow-ups like "and tomorrow?" work. Nothing is kept after you stop it.

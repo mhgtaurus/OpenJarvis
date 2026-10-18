@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 
 DEFAULT_WAKE_WORDS = ("jarvis", "dschawis", "jarvies")
+_HISTORY_TURNS = 6
 DEFAULT_EXIT_PHRASES = ("goodbye", "good bye", "shut down", "tschüss", "beenden")
 
 
@@ -32,6 +33,14 @@ def strip_wake_word(text: str, wake_words: Sequence[str]) -> Optional[str]:
             if idx == len(words) - 1:
                 return " ".join(words[:idx])
     return None
+
+
+def build_query(command: str, history: Sequence[tuple[str, str]]) -> str:
+    """Prefix ``command`` with recent turns so follow-ups ("and tomorrow?") work."""
+    if not history:
+        return command
+    turns = "\n".join(f"User: {u}\nJarvis: {a}" for u, a in history)
+    return f"Conversation so far:\n{turns}\n\nUser: {command}"
 
 
 def is_exit(command: str, exit_phrases: Sequence[str] = DEFAULT_EXIT_PHRASES) -> bool:
@@ -124,9 +133,15 @@ def assistant(
     words = tuple(DEFAULT_WAKE_WORDS) + tuple(_normalize(w) for w in wake_words)
 
     with Jarvis(model=model_name) as jarvis:
+        history: list[tuple[str, str]] = []
 
         def answer(query: str) -> str:
-            return jarvis.ask(query, agent=agent_name, tools=tool_list)
+            reply = jarvis.ask(
+                build_query(query, history), agent=agent_name, tools=tool_list
+            )
+            history.append((query, reply))
+            del history[:-_HISTORY_TURNS]
+            return reply
 
         def say(text: str) -> None:
             console.print(f"[bold cyan]Jarvis:[/bold cyan] {text}")
@@ -147,4 +162,4 @@ def assistant(
             console.print("\n[dim]Offline.[/dim]")
 
 
-__all__ = ["AssistantLoop", "assistant", "is_exit", "strip_wake_word"]
+__all__ = ["AssistantLoop", "assistant", "build_query", "is_exit", "strip_wake_word"]
