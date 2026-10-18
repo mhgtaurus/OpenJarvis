@@ -451,6 +451,12 @@ jarvis channel status
 
 ---
 
+## `jarvis assistant`
+
+Hands-free voice mode: say "Jarvis, ..." and hear the answer. Options: `-m`, `-a`, `--tools`, `--wake-word`, `--no-speak`. See [Voice Assistant](voice-assistant.md).
+
+---
+
 ## `jarvis serve`
 
 Start an OpenAI-compatible API server.
