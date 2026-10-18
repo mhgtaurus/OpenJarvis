@@ -3,6 +3,7 @@ from openjarvis.cli.assistant_cmd import (
     build_query,
     is_exit,
     strip_wake_word,
+    wait_for_wake_word,
 )
 
 WAKE = ("jarvis",)
@@ -68,3 +69,53 @@ def test_build_query_includes_history():
     q = build_query("and tomorrow?", [("weather today", "sunny")])
     assert "User: weather today" in q and "Jarvis: sunny" in q
     assert q.endswith("User: and tomorrow?")
+
+
+def test_wait_for_wake_word_triggers_at_threshold():
+    scores = iter([0.1, 0.4, 0.7, 0.9])
+    seen = []
+
+    def predict(frame):
+        seen.append(frame)
+        return {"hey_jarvis": next(scores)}
+
+    assert wait_for_wake_word(iter("abcd"), predict, 0.5)
+    assert seen == ["a", "b", "c"]  # stops consuming audio once triggered
+
+
+def test_wait_for_wake_word_runs_out_of_frames():
+    assert not wait_for_wake_word(iter("ab"), lambda f: {"m": 0.0}, 0.5)
+
+
+def test_model_gated_loop_greets_then_answers():
+    heard = iter(["what is the capital of France"])
+    spoken, asked, woke = [], [], []
+
+    def answer(q):
+        asked.append(q)
+        return "Paris"
+
+    loop = AssistantLoop(
+        listen=lambda: next(heard, None),
+        answer=answer,
+        speak=spoken.append,
+        wait_for_wake=lambda: woke.append(1),
+    )
+    assert loop.step()
+    assert woke == [1]
+    assert asked == ["what is the capital of France"]
+    assert spoken == ["Yes?", "Paris"]
+
+
+def test_model_gated_loop_ignores_silence_and_exits():
+    heard = iter([None, "goodbye"])
+    spoken = []
+    loop = AssistantLoop(
+        listen=lambda: next(heard, None),
+        answer=lambda q: "x",
+        speak=spoken.append,
+        wait_for_wake=lambda: None,
+    )
+    assert loop.step()  # nothing said after the wake word
+    assert not loop.step()
+    assert spoken[-1] == loop.farewell

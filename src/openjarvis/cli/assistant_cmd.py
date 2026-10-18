@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
+from typing import Callable, Iterable, Optional, Sequence
 
 import click
 from rich.console import Console
@@ -43,6 +43,61 @@ def build_query(command: str, history: Sequence[tuple[str, str]]) -> str:
     return f"Conversation so far:\n{turns}\n\nUser: {command}"
 
 
+_WAKE_MODEL = "hey_jarvis"
+_WAKE_FRAME = 1280  # 80 ms at 16 kHz, the frame size openWakeWord expects
+
+
+def wake_model_available() -> bool:
+    """True if the optional openWakeWord dependency is importable."""
+    try:
+        import openwakeword  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def wait_for_wake_word(
+    frames: Iterable[object],
+    predict: Callable[[object], dict],
+    threshold: float,
+) -> bool:
+    """Consume audio ``frames`` until ``predict`` scores >= ``threshold``.
+
+    Returns True on detection, False if ``frames`` ran out first.
+    """
+    for frame in frames:
+        if max(predict(frame).values(), default=0.0) >= threshold:
+            return True
+    return False
+
+
+def make_wake_model_waiter(threshold: float) -> Callable[[], None]:
+    """Build a blocking "wait until someone says Hey Jarvis" callable."""
+    import numpy as np
+    import openwakeword
+    import sounddevice as sd
+    from openwakeword.model import Model
+
+    paths = [p for p in openwakeword.get_pretrained_model_paths() if _WAKE_MODEL in p]
+    if not paths:
+        raise click.ClickException(f"openWakeWord has no '{_WAKE_MODEL}' model.")
+    model = Model(wakeword_model_paths=paths)
+
+    def frames() -> Iterable[object]:
+        with sd.RawInputStream(
+            samplerate=16000, channels=1, dtype="int16", blocksize=_WAKE_FRAME
+        ) as stream:
+            while True:
+                raw, _ = stream.read(_WAKE_FRAME)
+                yield np.frombuffer(bytes(raw), dtype=np.int16)
+
+    def wait() -> None:
+        model.reset()  # drop the previous trigger's activations
+        wait_for_wake_word(frames(), model.predict, threshold)
+
+    return wait
+
+
 def is_exit(command: str, exit_phrases: Sequence[str] = DEFAULT_EXIT_PHRASES) -> bool:
     cmd = _normalize(command)
     return any(cmd.startswith(p) for p in exit_phrases)
@@ -59,15 +114,29 @@ class AssistantLoop:
     greeting: str = "Yes?"
     farewell: str = "Goodbye. Shutting down."
     log: Callable[[str], None] = field(default=lambda _msg: None)
+    # When set, a wake-word model gates the loop instead of transcribing
+    # everything: block until it fires, then record the command.
+    wait_for_wake: Optional[Callable[[], None]] = None
 
     def step(self) -> bool:
         """Handle one utterance. Returns False when the assistant should exit."""
-        heard = self.listen()
-        if not heard:
-            return True
-        command = strip_wake_word(heard, self.wake_words)
-        if command is None:
-            return True  # not addressed to us
+        if self.wait_for_wake is not None:
+            self.wait_for_wake()
+            self.speak(self.greeting)
+            heard = (self.listen() or "").strip()
+            if not heard:
+                return True
+            stripped = strip_wake_word(heard, self.wake_words)
+            command = heard if stripped is None else stripped
+            if not command:
+                return True
+        else:
+            heard = self.listen()
+            if not heard:
+                return True
+            command = strip_wake_word(heard, self.wake_words)
+            if command is None:
+                return True  # not addressed to us
         if not command:
             self.speak(self.greeting)
             command = (self.listen() or "").strip()
@@ -98,23 +167,56 @@ class AssistantLoop:
     multiple=True,
     help="Additional wake word (repeatable). Default: 'jarvis'.",
 )
+@click.option(
+    "--wake-engine",
+    type=click.Choice(["auto", "model", "stt"]),
+    default="auto",
+    show_default=True,
+    help=(
+        "How 'Hey Jarvis' is detected: 'model' uses openWakeWord (light, always-on), "
+        "'stt' transcribes every utterance, 'auto' picks 'model' when installed "
+        "and no custom --wake-word is given."
+    ),
+)
+@click.option(
+    "--wake-threshold",
+    type=click.FloatRange(0.0, 1.0),
+    default=0.5,
+    show_default=True,
+    help="Wake-word model score needed to trigger (lower = more sensitive).",
+)
 @click.option("--no-speak", is_flag=True, help="Print replies instead of speaking.")
 def assistant(
     model_name: str | None,
     agent_name: str | None,
     tools: str | None,
     wake_words: tuple[str, ...],
+    wake_engine: str,
+    wake_threshold: float,
     no_speak: bool,
 ) -> None:
     """Run Jarvis hands-free: say "Jarvis, <request>" and hear the answer.
 
     Needs a microphone and the speech extras (``pip install 'OpenJarvis[speech]'``).
+    For a dedicated wake-word model install ``pip install 'OpenJarvis[wakeword]'``.
     Say "Jarvis, goodbye" or press Ctrl-C to stop.
     """
     from openjarvis.cli._voice_chat import VoiceSession, speak
     from openjarvis.sdk import Jarvis
     from openjarvis.speech.voice_io import record_until_silence
 
+    use_model = wake_engine == "model" or (
+        wake_engine == "auto" and not wake_words and wake_model_available()
+    )
+    if use_model and wake_words:
+        raise click.ClickException(
+            "--wake-word needs --wake-engine stt; the model only knows 'Hey Jarvis'."
+        )
+    if use_model and not wake_model_available():
+        raise click.ClickException(
+            "openWakeWord is not installed. "
+            "Install with: pip install 'OpenJarvis[wakeword]'"
+        )
     console = Console()
     session = VoiceSession()
     stt = session.get_stt_backend()
@@ -128,6 +230,8 @@ def assistant(
         audio = record_until_silence(silence_seconds=1.0, startup_silence_seconds=30)
         text = stt.transcribe(audio, format="wav").text.strip()
         return text or None
+
+    waiter = make_wake_model_waiter(wake_threshold) if use_model else None
 
     tool_list = [t.strip() for t in tools.split(",")] if tools else None
     words = tuple(DEFAULT_WAKE_WORDS) + tuple(_normalize(w) for w in wake_words)
@@ -153,13 +257,24 @@ def assistant(
             answer=answer,
             speak=say,
             wake_words=words,
+            wait_for_wake=waiter,
             log=lambda m: console.print(f"[dim]{m}[/dim]"),
         )
-        console.print('[green]Jarvis online.[/green] Say "Jarvis ..." (Ctrl-C to quit)')
+        mode = "wake-word model" if use_model else "speech recognition"
+        console.print(
+            f'[green]Jarvis online[/green] ({mode}). Say "Hey Jarvis" (Ctrl-C to quit)'
+        )
         try:
             loop.run()
         except KeyboardInterrupt:
             console.print("\n[dim]Offline.[/dim]")
 
 
-__all__ = ["AssistantLoop", "assistant", "build_query", "is_exit", "strip_wake_word"]
+__all__ = [
+    "AssistantLoop",
+    "assistant",
+    "build_query",
+    "is_exit",
+    "strip_wake_word",
+    "wait_for_wake_word",
+]

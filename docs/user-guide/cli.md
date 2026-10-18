@@ -453,7 +453,7 @@ jarvis channel status
 
 ## `jarvis assistant`
 
-Hands-free voice mode: say "Jarvis, ..." and hear the answer. Options: `-m`, `-a`, `--tools`, `--wake-word`, `--no-speak`. See [Voice Assistant](voice-assistant.md).
+Hands-free voice mode: say "Jarvis, ..." and hear the answer. Options: `-m`, `-a`, `--tools`, `--wake-word`, `--wake-engine`, `--wake-threshold`, `--no-speak`. See [Voice Assistant](voice-assistant.md).
 
 ---
 

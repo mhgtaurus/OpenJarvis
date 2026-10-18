@@ -173,6 +173,8 @@ speech = [
     "soundfile>=0.12",
 ]
 speech-deepgram = ["deepgram-sdk>=3.0"]
+# Always-on "Hey Jarvis" detection for `jarvis assistant` (0.4.x ships its models).
+wakeword = ["openwakeword>=0.4,<0.5", "onnxruntime>=1.16", "numpy>=1.24", "sounddevice>=0.5"]
 eval-wandb = ["wandb>=0.17"]
 eval-sheets = ["gspread>=6.0", "google-auth>=2.0"]
 mining-pearl-cpu = [
