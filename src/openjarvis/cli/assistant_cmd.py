@@ -98,6 +98,18 @@ def make_wake_model_waiter(threshold: float) -> Callable[[], None]:
     return wait
 
 
+def resolve_agent_and_tools(
+    agent: Optional[str], tools: Optional[Sequence[str]], smart_home: bool
+) -> tuple[Optional[str], Optional[list[str]]]:
+    """Enable the smart-home tool when configured; tools need an agent to run."""
+    tool_list = list(tools) if tools else []
+    if smart_home and "home_assistant" not in tool_list:
+        tool_list.append("home_assistant")
+    if tool_list and agent is None:
+        agent = "orchestrator"
+    return agent, tool_list or None
+
+
 def is_exit(command: str, exit_phrases: Sequence[str] = DEFAULT_EXIT_PHRASES) -> bool:
     cmd = _normalize(command)
     return any(cmd.startswith(p) for p in exit_phrases)
@@ -199,7 +211,8 @@ def assistant(
 
     Needs a microphone and the speech extras (``pip install 'OpenJarvis[speech]'``).
     For a dedicated wake-word model install ``pip install 'OpenJarvis[wakeword]'``.
-    Say "Jarvis, goodbye" or press Ctrl-C to stop.
+    If Home Assistant is configured (see the Smart Home guide) the smart-home tool
+    is enabled automatically. Say "Jarvis, goodbye" or press Ctrl-C to stop.
     """
     from openjarvis.cli._voice_chat import VoiceSession, speak
     from openjarvis.sdk import Jarvis
@@ -233,7 +246,13 @@ def assistant(
 
     waiter = make_wake_model_waiter(wake_threshold) if use_model else None
 
-    tool_list = [t.strip() for t in tools.split(",")] if tools else None
+    from openjarvis.tools.home_assistant import HomeAssistantTool
+
+    agent_name, tool_list = resolve_agent_and_tools(
+        agent_name,
+        [t.strip() for t in tools.split(",") if t.strip()] if tools else None,
+        HomeAssistantTool().is_configured(),
+    )
     words = tuple(DEFAULT_WAKE_WORDS) + tuple(_normalize(w) for w in wake_words)
 
     with Jarvis(model=model_name) as jarvis:
@@ -275,6 +294,7 @@ __all__ = [
     "assistant",
     "build_query",
     "is_exit",
+    "resolve_agent_and_tools",
     "strip_wake_word",
     "wait_for_wake_word",
 ]

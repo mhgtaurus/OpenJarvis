@@ -2,6 +2,7 @@ from openjarvis.cli.assistant_cmd import (
     AssistantLoop,
     build_query,
     is_exit,
+    resolve_agent_and_tools,
     strip_wake_word,
     wait_for_wake_word,
 )
@@ -119,3 +120,18 @@ def test_model_gated_loop_ignores_silence_and_exits():
     assert loop.step()  # nothing said after the wake word
     assert not loop.step()
     assert spoken[-1] == loop.farewell
+
+
+def test_resolve_agent_and_tools():
+    assert resolve_agent_and_tools(None, None, False) == (None, None)
+    assert resolve_agent_and_tools(None, None, True) == (
+        "orchestrator",
+        ["home_assistant"],
+    )
+    assert resolve_agent_and_tools("react", ["calculator"], True) == (
+        "react",
+        ["calculator", "home_assistant"],
+    )
+    assert resolve_agent_and_tools(None, ["home_assistant"], True)[1] == [
+        "home_assistant"
+    ]

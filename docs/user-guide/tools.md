@@ -189,6 +189,7 @@ All built-in tools are registered via `@ToolRegistry.register()` and are availab
 | **Code** | `repl` | Persistent Python REPL with state across calls |
 | **Search** | `web_search` | Web search returning result summaries |
 | **Weather** | `get_weather` | Dynamic current conditions and forecast via OpenWeatherMap |
+| **Smart home** | `home_assistant` | List, read and control devices through Home Assistant (see [Smart Home](smart-home.md)) |
 | **File I/O** | `file_read` | Read file contents with safety validations |
 | **HTTP** | `http_request` | Make HTTP requests with SSRF protection |
 | **Memory** | `retrieval` | Search the memory backend for relevant context |

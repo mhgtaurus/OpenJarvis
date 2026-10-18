@@ -406,6 +406,23 @@ enabled = true
 
 ---
 
+### `[tools.home_assistant]` — Smart Home Tool
+
+Settings for the `home_assistant` tool. The access token is read from
+`HOME_ASSISTANT_TOKEN` (or the tool credentials), never from `config.toml`.
+See the [Smart Home guide](../user-guide/smart-home.md).
+
+```toml
+[tools.home_assistant]
+url = "http://homeassistant.local:8123"
+allow_sensitive = false
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `url` | string | `""` | Base URL of your Home Assistant instance. |
+| `allow_sensitive` | bool | `false` | Also allow locks, alarm panels, cameras and command-running domains. |
+
 ### `[tools.weather]` — Native Weather Tool
 
 Controls defaults for the `get_weather` native tool. The requested location,

@@ -64,6 +64,12 @@ jarvis assistant --wake-word computer --no-speak   # picks the stt engine
 jarvis assistant --wake-engine model --wake-threshold 0.4
 ```
 
+## Smart home
+
+When [Home Assistant](smart-home.md) is configured, `jarvis assistant` enables the
+`home_assistant` tool automatically (using the `orchestrator` agent unless you
+pass `-a`), so you can say "Hey Jarvis, turn off the kitchen lights".
+
 ## Limitations
 
 - With the `stt` engine, every utterance is transcribed to look for the wake

@@ -1118,6 +1118,14 @@ class WeatherToolConfig:
 
 
 @dataclass(slots=True)
+class HomeAssistantToolConfig:
+    """Home Assistant smart-home tool settings (the token stays out of config)."""
+
+    url: str = ""  # e.g. http://homeassistant.local:8123
+    allow_sensitive: bool = False  # permit locks, alarms, cameras, shell commands
+
+
+@dataclass(slots=True)
 class ToolsConfig:
     """Tools primitive settings — wraps storage and MCP configuration."""
 
@@ -1125,6 +1133,9 @@ class ToolsConfig:
     mcp: MCPConfig = field(default_factory=MCPConfig)
     browser: BrowserConfig = field(default_factory=BrowserConfig)
     weather: WeatherToolConfig = field(default_factory=WeatherToolConfig)
+    home_assistant: HomeAssistantToolConfig = field(
+        default_factory=HomeAssistantToolConfig
+    )
     enabled: str = ""  # comma-separated default tools
 
 
@@ -2296,6 +2307,9 @@ enabled = true
 # default_location = ""
 # units = "metric"             # metric or imperial
 # lang = "en"                  # OpenWeatherMap language code
+# [tools.home_assistant]
+# url = "http://homeassistant.local:8123"
+# allow_sensitive = false      # true also allows locks, alarms, cameras
 
 [server]
 # Loopback is safe for local use and works without API authentication.
@@ -2485,6 +2499,7 @@ __all__ = [
     "VLLMEngineConfig",
     "WebChatChannelConfig",
     "WebhookChannelConfig",
+    "HomeAssistantToolConfig",
     "WeatherToolConfig",
     "WhatsAppBaileysChannelConfig",
     "WhatsAppChannelConfig",

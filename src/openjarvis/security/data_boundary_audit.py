@@ -251,6 +251,7 @@ LOCAL_ACCESS_TOOLS = {
     "git_diff",
     "git_log",
     "git_status",
+    "home_assistant",
     "kg_add_entity",
     "kg_add_relation",
     "kg_neighbors",

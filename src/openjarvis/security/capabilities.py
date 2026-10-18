@@ -246,6 +246,7 @@ DEFAULT_TOOL_CAPABILITIES: Dict[str, List[str]] = {
     "git_diff": [Capability.FILE_READ],
     "git_log": [Capability.FILE_READ],
     "git_status": [Capability.FILE_READ],
+    "home_assistant": [Capability.NETWORK_FETCH],
     "http_request": [Capability.NETWORK_FETCH],
     "image_generate": [Capability.NETWORK_FETCH, Capability.FILE_WRITE],
     "kg_add_entity": [Capability.MEMORY_WRITE],

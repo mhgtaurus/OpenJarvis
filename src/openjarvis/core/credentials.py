@@ -35,6 +35,7 @@ def _default_path() -> Path:
 TOOL_CREDENTIALS: dict[str, list[str]] = {
     "web_search": ["TAVILY_API_KEY", "YOUDOTCOM_API_KEY", "SERPLY_API_KEY"],
     "get_weather": ["OPENWEATHERMAP_API_KEY"],
+    "home_assistant": ["HOME_ASSISTANT_TOKEN"],
     "image_generate": ["OPENAI_API_KEY"],
     "slack": ["SLACK_BOT_TOKEN", "SLACK_APP_TOKEN"],
     "telegram": ["TELEGRAM_BOT_TOKEN"],
